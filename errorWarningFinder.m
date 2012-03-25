@@ -120,6 +120,9 @@ for i = 2:length(mFiles)
     Found(end+1).fName = [fPath filesep mFiles{i}];
     Found(end).errors  = errStr;
     Found(end).warns   = warnStr;
+    %reinitialize temporary variables
+    errStr  = '';
+    warnStr = '';
 end
 
 %% recursive call for all subdirectories
@@ -153,18 +156,19 @@ if(output)
         fprintf('\nErrors:\n');
         for j = 1:length(Found(i).errors)
             if(~isempty(Found(i).errors{j}{1}))
-                display(repmat('- ',1,38));
+                display(repmat(' -',1,38));
                 fprintf('Original: %s\n', Found(i).errors{j}{1}{1});
                 fprintf('Modified: %s\n', Found(i).errors{j}{1}{2});
+                display(repmat(' -',1,38));
             end
         end
-        display(repmat('- ',1,38));
         fprintf('\nWarnings:\n');
         for j = 1:length(Found(i).warns)
             if(~isempty(Found(i).warns{j}{1}))
-                display(repmat('-- ',1,24));
+                display(repmat('- --',1,19));
                 fprintf('Original: %s\n', Found(i).warns{j}{1}{1});
                 fprintf('Modified: %s\n', Found(i).warns{j}{1}{2});
+                display(repmat('- --',1,19));
             end
         end
     end

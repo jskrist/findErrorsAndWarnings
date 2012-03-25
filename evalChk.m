@@ -12,10 +12,12 @@ fmtStr = '\n\nidentifiers in %s on line %d do not match: \n%s ~= %s\n\n';
   try
     eval(str);
   catch M
-    disp(M.message);
+    if(str(1) == 'e')
+      fprintf('ERROR: %s\n', M.message);
+    end
     %if the identifiers are not equal then something went wrong, so flag it
     %and keep going
-    if(~isequal(identStr{:}, M.identifier))
+    if(~isequal(identStr, M.identifier))
       st = dbstack;
       str = sprintf(fmtStr,            ...
                     M.stack(1,1).name,...
