@@ -67,10 +67,13 @@ Found.warns  = {''};
 errStr  = '';
 warnStr = '';
 
+output = false;
+
 %Check for inputs and go to the given directory, also set the path variable
 switch length(varargin)
     case 0
         fPath = '.';
+        output = true;
     case 1
         fPath = ['.' filesep varargin{1}];
     case 2
@@ -114,7 +117,7 @@ for i = 2:length(mFiles)
     end
     fclose(f);
     %Save the information about the last file
-    Found(end+1).fName = fPath;
+    Found(end+1).fName = [fPath filesep mFiles{i}];
     Found(end).errors  = errStr;
     Found(end).warns   = warnStr;
 end
@@ -136,28 +139,31 @@ for i = 1:length(subDirNames)
     end
 end
 
-%% format output and show results
 
-%Number of files
-numFilesLookedAt = length(Found) - 1;
-%Create Report
-display(repmat('-',1,76));
-display('Begin Report');
-fprintf('Number of files searched through: %d\n', numFilesLookedAt);
-for i = 2:length(Found)
-    fprintf('\nFile: %s\n', Found(i).fName);
-    display('Errors:');
-    for j = 1:length(Found(i).errors)
+%% format output and show results
+if(output)
+    %Number of files
+    numFilesLookedAt = length(Found) - 1;
+    %Create Report
+    display(repmat('-',1,76));
+    display('Begin Report');
+    fprintf('Number of files searched through: %d\n', numFilesLookedAt);
+    for i = 2:length(Found)
+        fprintf('\nFile: %s\n', Found(i).fName);
+        display('Errors:');
+        for j = 1:length(Found(i).errors)
+            if(~isempty(Found(i).errors{j}{1}))
+                display(repmat('- ',1,38));
+                fprintf('Original: %s\n', Found(i).errors{j}{1}{1});
+                fprintf('Modified: %s\n', Found(i).errors{j}{2}{1});
+            end
+        end
         display(repmat('- ',1,38));
-        fprintf('Original: %s\n', Found(i).errors{j}{1});
-        fprintf('Modified: %s\n', Found(i).errors{j}{2});
-    end
-    display(repmat('- ',1,38));
-    display('\nWarnings:');
-    for j = 1:length(Found(i).warns)
-        display(repmat('- ',1,38));
-        fprintf('Original: %s\n', Found(i).warns{j}{1});
-        fprintf('Modified: %s\n', Found(i).warns{j}{2});
+        display('\nWarnings:');
+        for j = 1:length(Found(i).warns)
+            display(repmat('- ',1,38));
+            fprintf('Original: %s\n', Found(i).warns{j}{1});
+            fprintf('Modified: %s\n', Found(i).warns{j}{2});
+        end
     end
 end
-

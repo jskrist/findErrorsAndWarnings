@@ -1,6 +1,6 @@
 function [errFound warnFound fh] = parseLine(str, fh)
 %PARSELINE takes in a line from a file, evaluates whether or not that line
-%contains an error or a warning, and returns cells arrays containing the
+%contains an error or a warning, and returns cell arrays containing the
 %original and modified errors and warnings found.
 %
 %If an error or a warning is found it strips out any arguments, replaces
@@ -23,7 +23,7 @@ startStr          = '(error|warning)\(';
 msgStr            = 'message\(';
 lineBreakCheckStr = '\.\.\.';
 commentChar       = '%';
-
+argStr            = '0';
 %first check that the line is not a comment and that it has an error or
 %warning in it
 
@@ -95,11 +95,19 @@ if(~isCommented && ~isempty(errWarnStart))
     end
   else
     %combine all errors and warnings found
+    %remove any spaces from the errors and warnings, remove any arguments
+    %and replace them with 0, then evaluate them in the command window.
+    %Also, store the original and modified versions to output later
     for i = 1:length(mat)
+      mat{i} = regexprep(mat{i}, '\s*?', '');
+      mod    = regexprep(mat{i}, '(?<=\w*:\w*,).*(?=(,|\)))', argStr);
+      
       if(mat{i}(1) == 'w')
-        warnFound{end+1} = mat(i);
+        warnFound{end+1} = {mat(i); mod};
+        eval(mod);
       else
-        errFound{end+1}  = mat(i);
+        errFound{end+1}  = {mat(i); mod};
+        evalError(mod);
       end
     end
   end
