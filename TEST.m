@@ -6,7 +6,7 @@
 % 
                               error(message('MATLAB:rmpath:DirNotFound',...
                                             0));
-error(message('MATLAB:rmpath:DirNotFound', 0));
+warning(message('MATLAB:rmpath:DirNotFound', 0));
 a = 1+1;
 
                          error(message('MATLAB:rmpath:DirNotFound',... test

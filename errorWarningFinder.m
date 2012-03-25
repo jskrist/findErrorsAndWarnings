@@ -150,20 +150,22 @@ if(output)
     fprintf('Number of files searched through: %d\n', numFilesLookedAt);
     for i = 2:length(Found)
         fprintf('\nFile: %s\n', Found(i).fName);
-        display('Errors:');
+        fprintf('\nErrors:\n');
         for j = 1:length(Found(i).errors)
             if(~isempty(Found(i).errors{j}{1}))
                 display(repmat('- ',1,38));
                 fprintf('Original: %s\n', Found(i).errors{j}{1}{1});
-                fprintf('Modified: %s\n', Found(i).errors{j}{2}{1});
+                fprintf('Modified: %s\n', Found(i).errors{j}{1}{2});
             end
         end
         display(repmat('- ',1,38));
-        display('\nWarnings:');
+        fprintf('\nWarnings:\n');
         for j = 1:length(Found(i).warns)
-            display(repmat('- ',1,38));
-            fprintf('Original: %s\n', Found(i).warns{j}{1});
-            fprintf('Modified: %s\n', Found(i).warns{j}{2});
+            if(~isempty(Found(i).warns{j}{1}))
+                display(repmat('-- ',1,24));
+                fprintf('Original: %s\n', Found(i).warns{j}{1}{1});
+                fprintf('Modified: %s\n', Found(i).warns{j}{1}{2});
+            end
         end
     end
 end

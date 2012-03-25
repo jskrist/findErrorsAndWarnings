@@ -100,21 +100,23 @@ if(~isCommented && ~isempty(errWarnStart))
     %Also, store the original and modified versions to output later
     for i = 1:length(mat)
       mat{i} = regexprep(mat{i}, '\s*?', '');
-      mod    = regexprep(mat{i}, '(?<=\w*:\w*,).*(?=(,|\)))', argStr);
-      
+      mod    = regexprep(mat{i}, '(?<=\w*:\w*''?,).*?(?=[,\)])', argStr);
+
       if(mat{i}(1) == 'w')
-        warnFound{end+1} = {mat(i); mod};
+        warnFound{end+1} = {mat{i}; mod};
         eval(mod);
       else
-        errFound{end+1}  = {mat(i); mod};
+        errFound{end+1}  = {mat{i}; mod};
         evalError(mod);
       end
     end
+    if(isempty(errFound))
+      errFound  = {''; ''};
+    end
+    if(isempty(warnFound))
+      warnFound = {''; ''};
+    end
   end
-  %************************************************************************
-  % replace Params from Errors or Warnings with zeros, store the originals
-  %in a structure like errFound{{original; modified}} along with the
-  %modified Errors and Warnings
 else
   errFound  = {''; ''};
   warnFound = {''; ''};
