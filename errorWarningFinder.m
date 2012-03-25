@@ -105,16 +105,21 @@ end
 
 %% Go through all the files and look for errors and warnings
 for i = 2:length(mFiles)
+    fInfo.name = [fPath filesep mFiles{i}];
+    fInfo.lineNum = 0;
     %open the file
-    f = fopen([fPath filesep mFiles{i}]);
+    f = fopen(fInfo.name);
     %get a single line out of the file
     str = fgetl(f);
+    fInfo.lineNum = fInfo.lineNum + 1;
     %while we have not reached the end of the file
     while(~feof(f))
         %parse the line for the error or warning
-        [errStr{end+1} warnStr{end+1} f] = parseLine(str, f);
+        [errStr{end+1} warnStr{end+1} f] = parseLine(str,f,fInfo);
         str = fgetl(f);
+        fInfo.lineNum = fInfo.lineNum + 1;
     end
+    %close file
     fclose(f);
     %Save the information about the last file
     Found(end+1).fName = [fPath filesep mFiles{i}];

@@ -1,4 +1,4 @@
-function [errFound warnFound fh] = parseLine(str, fh)
+function [errFound warnFound fh] = parseLine(str, fh, fInfo)
 %PARSELINE takes in a line from a file, evaluates whether or not that line
 %contains an error or a warning, and returns cell arrays containing the
 %original and modified, errors and warnings found.
@@ -86,6 +86,7 @@ if(~isCommented && ~isempty(errWarnStart))
   if(callAgain)
     %get the next line from the file
     str2 = fgetl(fh);
+    fInfo.lineNum = fInfo.lineNum + 1;
     if(ischar(str2))
       %Remove the ... from the first line
       str = regexprep(str, lineBreakCheckStr, '');
@@ -93,7 +94,7 @@ if(~isCommented && ~isempty(errWarnStart))
       str2 = regexprep(str2, '\s', '');
       %concatonate the two lines and recall this function
       str = [str, str2];
-      [errFound warnFound fh] = parseLine(str, fh);
+      [errFound warnFound fh] = parseLine(str, fh, fInfo);
     else
         warning('FILE:EndedOnLineBreak', 'file ended with a linebreak');
     end
@@ -104,14 +105,16 @@ if(~isCommented && ~isempty(errWarnStart))
     %Also, store the original and modified versions to output later
     for i = 1:length(mat)
       mat{i} = regexprep(mat{i}, '\s*?', '');
-      mod    = regexprep(mat{i}, '(?<=\w*:\w*''?,).*?(?=[,\)])', argStr);
+      mod    = regexprep(mat{i}, ...
+                         '(?<=\w*:\w*'',((.*,)?)*).*?(?=[,\)])',...
+                         argStr);
 
       if(mat{i}(1) == 'w')
         warnFound{end+1} = {mat{i}; mod};
       else
         errFound{end+1}  = {mat{i}; mod};
       end
-      evalChk(mod);
+      evalChk(mod, fInfo);
     end
     if(isempty(errFound))
       errFound  = {''; ''};

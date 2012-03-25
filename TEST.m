@@ -14,15 +14,15 @@ a = 1+1;
 
 % eval('warning(message('MATLAB:odearguments:InconsistentDataType'...
 % , 0, 0, 0)));
-
-error(message('MATLAB:rmpath:DirNotFound', 0)); error(message('MATLAB:rmpath:DirNotFound', 0));
+alpha = 2;
+error(message('MATLAB:rmpath:DirNotFound', 0)); error(message('MATLAB:rmpath:DirNotFound', alpha));
 
 
 a = 'error(message(''MATLAB:odearguments:InconsistentDataType'', 0, 0, 0)); error(message(''MATLAB:rmpath:DirNotFound'', 0)); %this is a comment warning(message(''MATLAB:odearguments:InconsistentDataType'', 0, 0, 0));';
 
-
+beta = 'hello';
     warning(...
-        message('MATLAB:rmpath:DirNotFound', 0));
+        message('MATLAB:rmpath:DirNotFound', 0, beta));
 
     warning(...
             message(...
