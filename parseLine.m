@@ -1,4 +1,4 @@
-function [errFound warnFound fh] = parseLine(str, fh, fInfo)
+function [errFound warnFound fh disp] = parseLine(str, fh, fInfo, disp)
 %PARSELINE takes in a line from a file, evaluates whether or not that line
 %contains an error or a warning, and returns cell arrays containing the
 %original and modified, errors and warnings found.
@@ -94,7 +94,7 @@ if(~isCommented && ~isempty(errWarnStart))
       str2 = regexprep(str2, '\s', '');
       %concatonate the two lines and recall this function
       str = [str, str2];
-      [errFound warnFound fh] = parseLine(str, fh, fInfo);
+      [errFound warnFound fh disp] = parseLine(str, fh, fInfo, disp);
     else
         warning('FILE:EndedOnLineBreak', 'file ended with a linebreak');
     end
@@ -116,14 +116,20 @@ if(~isCommented && ~isempty(errWarnStart))
       end
       evalChk(mod, fInfo);
     end
+    disp = false;
     if(isempty(errFound))
       errFound  = {''; ''};
+    else
+      disp = true;
     end
     if(isempty(warnFound))
       warnFound = {''; ''};
+    else
+      disp = true;
     end
   end
 else
+  disp = false;
   errFound  = {''; ''};
   warnFound = {''; ''};
 end

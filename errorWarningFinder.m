@@ -62,6 +62,7 @@ function [Found] = errorWarningFinder(varargin)
 Found.fName  =  '';
 Found.errors = {''};
 Found.warns  = {''};
+Found.disp   = 0;
 
 %Used to gather errors and warnings line by line for each file
 errStr  = '';
@@ -107,6 +108,7 @@ end
 for i = 2:length(mFiles)
     fInfo.name = [fPath filesep mFiles{i}];
     fInfo.lineNum = 0;
+    show = false;
     %open the file
     f = fopen(fInfo.name);
     %get a single line out of the file
@@ -115,8 +117,9 @@ for i = 2:length(mFiles)
     %while we have not reached the end of the file
     while(~feof(f))
         %parse the line for the error or warning
-        [errStr{end+1} warnStr{end+1} f] = parseLine(str,f,fInfo);
-        str = fgetl(f);
+        [errStr{end+1} warnStr{end+1} f disp]=parseLine(str,f,fInfo,show);
+        str  = fgetl(f);
+        show = show + disp;
         fInfo.lineNum = fInfo.lineNum + 1;
     end
     %close file
@@ -125,6 +128,7 @@ for i = 2:length(mFiles)
     Found(end+1).fName = [fPath filesep mFiles{i}];
     Found(end).errors  = errStr;
     Found(end).warns   = warnStr;
+    Found(end).disp    = show;
     %reinitialize temporary variables
     errStr  = '';
     warnStr = '';
@@ -134,12 +138,18 @@ end
 
 %find the subDirectories' names
 Dir         =  dList(subDirIdx);   %pull out only the directories
-subDirNames = {Dir(3:end).name};   %put all the names into an array,
-                                   %excluding the current and previous
-                                   %directory symbols, . and ..
-
+subDirNames = {''};
+for i = 1:length(Dir)
+  dirName = Dir(i).name;
+  if(dirName(1) ~= '@' && dirName(1) ~= '.')
+    subDirNames(end+1) = {Dir(i).name};  %put all the names into an array,
+                                       %excluding the current and previous
+                                       %directory symbols, . and .. as well
+                                       %as any linked folders with @
+  end
+end
 %make the call and combine the errors and warnings found
-for i = 1:length(subDirNames)
+for i = 2:length(subDirNames)
     recFind = errorWarningFinder(subDirNames{i}, fPath);
     %combine the recursive finds with the higher level finds
     for j = 2:length(recFind)
@@ -157,23 +167,25 @@ if(output)
     display('Begin Report');
     fprintf('Number of files searched through: %d\n', numFilesLookedAt);
     for i = 2:length(Found)
-        fprintf('\nFile: %s\n', Found(i).fName);
-        fprintf('\nErrors:\n');
-        for j = 1:length(Found(i).errors)
-            if(~isempty(Found(i).errors{j}{1}))
-                display(repmat(' -',1,38));
-                fprintf('Original: %s\n', Found(i).errors{j}{1}{1});
-                fprintf('Modified: %s\n', Found(i).errors{j}{1}{2});
-                display(repmat(' -',1,38));
+        if(Found(i).disp ~= 0)
+            fprintf('\nFile: %s\n', Found(i).fName);
+            fprintf('\nErrors:\n');
+            for j = 1:length(Found(i).errors)
+                if(~isempty(Found(i).errors{j}{1}))
+                    display(repmat(' -',1,38));
+                    fprintf('Original: %s\n', Found(i).errors{j}{1}{1});
+                    fprintf('Modified: %s\n', Found(i).errors{j}{1}{2});
+                    display(repmat(' -',1,38));
+                end
             end
-        end
-        fprintf('\nWarnings:\n');
-        for j = 1:length(Found(i).warns)
-            if(~isempty(Found(i).warns{j}{1}))
-                display(repmat('- --',1,19));
-                fprintf('Original: %s\n', Found(i).warns{j}{1}{1});
-                fprintf('Modified: %s\n', Found(i).warns{j}{1}{2});
-                display(repmat('- --',1,19));
+            fprintf('\nWarnings:\n');
+            for j = 1:length(Found(i).warns)
+                if(~isempty(Found(i).warns{j}{1}))
+                    display(repmat('- --',1,19));
+                    fprintf('Original: %s\n', Found(i).warns{j}{1}{1});
+                    fprintf('Modified: %s\n', Found(i).warns{j}{1}{2});
+                    display(repmat('- --',1,19));
+                end
             end
         end
     end
