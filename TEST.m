@@ -32,3 +32,11 @@ beta = 'hello';
             message(...
                     'MATLAB:rmpath:DirNotFound',...
                     0));
+
+error(message('TICCSEXT:util:LicenseGUIUnknownAction',lower(varargin{index})));
+
+
+error(message('ERRORHANDLER:utils:SSHError',linkfoundation.util.decoratePath(msg)));
+
+
+
