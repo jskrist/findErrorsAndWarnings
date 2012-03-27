@@ -37,13 +37,13 @@ errWarnStart    = regexp(str, startStr);
 %if there is a comment in the line, check to see if it is before or after
 %the warning or error
 if(~isempty(commentLocation))
-    if(~isempty(errWarnStart))
-        isCommented = max(commentLocation < errWarnStart);
-    else
-        isCommented = true;
-    end
+  if(~isempty(errWarnStart))
+    isCommented = max(commentLocation < errWarnStart);
+  else
+    isCommented = true;
+  end
 else
-    isCommented = false;
+  isCommented = false;
 end
 %if the line is not commented and has an error or a warning
 if(~isCommented && ~isempty(errWarnStart))
@@ -64,21 +64,28 @@ if(~isCommented && ~isempty(errWarnStart))
                        %check for the error or warning with the message and
                        %ID but without arguments or an ending
         mat = regexp(str,                                               ...
-                     [startStr, msgStr, IdStr, '(?=(\.\.\.|%))'],        ...
+                     [startStr, msgStr, IdStr, '(?=(\.\.\.|%))'],       ...
                      'match');
         if(isempty(mat)) %the line contains the error or warning, a message
                          %function and the message ID, but does not end
-                         %there, so check for the whole message
+                         %there, so check for arguments
           mat = regexp(str,                                             ...
-                       [startStr, msgStr, IdStr,'((\w*(\(.*\))?)|\d*?),?\){2}'],   ...
-                       'match');
-          if(isempty(mat)) %it was not found, but we know it exists, so it
-                           %was not split logically
-            warning('lineFromFile:NotLogicallySplit',                   ...
-                   ['Warning/Error was not logically split.\n'...
-                    '> In %s at %d'],...
-                    fInfo.name,...
-                    fInfo.lineNum);
+                       [startStr, msgStr, IdStr,'((\w*(\(.*\))?)|\d*?),?){0,}[^\){2}]'],   ...
+                         'match');
+          if(isempty(mat))
+            mat = regexp(str,                                           ...
+                         [startStr, msgStr, IdStr,'((\w*(\(.*\))?)|\d*?),?\){2}'],   ...
+                         'match');
+            if(isempty(mat)) %it was not found, but we know it exists, so
+                             %it was not split logically
+              warning('lineFromFile:NotLogicallySplit',                 ...
+                     ['Warning/Error was not logically split.\n'        ...
+                      '> In %s at %d'],                                 ...
+                      fInfo.name,                                       ...
+                      fInfo.lineNum);
+            end
+          else
+            callAgain = true;
           end
         else %found linebreak after message ID so call parseLine again
             callAgain = true;
