@@ -117,10 +117,10 @@ for i = 2:length(mFiles)
     %while we have not reached the end of the file
     while(~feof(f))
         %parse the line for the error or warning
-        [errStr{end+1} warnStr{end+1} f disp]=parseLine(str,f,fInfo,show);
+        [errStr{end+1} warnStr{end+1} f fInfo disp]=parseLine(str,f,fInfo,show);
         str  = fgetl(f);
-        show = show + disp;
         fInfo.lineNum = fInfo.lineNum + 1;
+        show = show + disp;
     end
     %close file
     fclose(f);
@@ -171,20 +171,24 @@ if(output)
             fprintf('\nFile: %s\n', Found(i).fName);
             fprintf('\nErrors:\n');
             for j = 1:length(Found(i).errors)
-                if(~isempty(Found(i).errors{j}{1}))
-                    display(repmat(' -',1,38));
-                    fprintf('Original: %s\n', Found(i).errors{j}{1}{1});
-                    fprintf('Modified: %s\n', Found(i).errors{j}{1}{2});
-                    display(repmat(' -',1,38));
+                for k = 1:length(Found(i).errors{j})
+                  if(~isempty(Found(i).errors{j}{k}))
+                      display(repmat(' -',1,38));
+                      fprintf('Original: %s\n', Found(i).errors{j}{k}{1});
+                      fprintf('Modified: %s\n', Found(i).errors{j}{k}{2});
+                      display(repmat(' -',1,38));
+                  end
                 end
             end
             fprintf('\nWarnings:\n');
             for j = 1:length(Found(i).warns)
-                if(~isempty(Found(i).warns{j}{1}))
-                    display(repmat('- --',1,19));
-                    fprintf('Original: %s\n', Found(i).warns{j}{1}{1});
-                    fprintf('Modified: %s\n', Found(i).warns{j}{1}{2});
-                    display(repmat('- --',1,19));
+                for k = 1:length(Found(i).warns{j})
+                  if(~isempty(Found(i).warns{j}{k}))
+                      display(repmat('- --',1,19));
+                      fprintf('Original: %s\n', Found(i).warns{j}{k}{1});
+                      fprintf('Modified: %s\n', Found(i).warns{j}{k}{2});
+                      display(repmat('- --',1,19));
+                  end
                 end
             end
         end
