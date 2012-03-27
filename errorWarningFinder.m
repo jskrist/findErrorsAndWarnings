@@ -1,59 +1,77 @@
 function [Found] = errorWarningFinder(varargin)
 %This looks through the current folder and it's subfolders recursively,
 %reads any MATLAB file, i.e. files which have a '.m' extension, and finds
-%any error or warning statements which are in UNCOMMENTED lines and fit
-%the following patterns:
+%any error or warning statements which are UNCOMMENTED and fit the
+%following patterns:
 %
 %     error(message('My:Error:ID'));
 %     error(message('My:Error:ID', arg1, arg2));
-%     error(...
+%     error(                                                            ...
 %           message('My:Error:ID', arg1, arg2));
-%     error(...
-%           message(...
+%     error(                                                            ...
+%           message(                                                    ...
 %                   'My:Error:ID', arg1, arg2));
-%     error(...
-%           message(...
-%                   'My:Error:ID',...
+%     error(                                                            ...
+%           message(                                                    ...
+%                   'My:Error:ID',                                      ...
 %                   arg1, arg2));
-%     error(...
-%           message(...
-%                   'My:Error:ID',...
-%                   arg1,...
+%     error(                                                            ...
+%           message(                                                    ...
+%                   'My:Error:ID',                                      ...
+%                   arg1,                                               ...
 %                   arg2));
+%     error(                                                            ...
+%           message(                                                    ...
+%                   'My:Error:ID',                                      ...
+%                   arg1,                                               ...
+%                   arg2                                                ...
+%                   ));
 %
 %   warning(message('My:Error:ID'));
 %   warning(message('My:Error:ID', arg1, arg2));
-%   warning(...
+%   warning(                                                            ...
 %           message('My:Error:ID', arg1, arg2));
-%   warning(...
-%           message(...
+%   warning(                                                            ...
+%           message(                                                    ...
 %                   'My:Error:ID', arg1, arg2));
-%   warning(...
-%           message(...
-%                   'My:Error:ID',...
+%   warning(                                                            ...
+%           message(                                                    ...
+%                   'My:Error:ID',                                      ...
 %                   arg1, arg2));
-%   warning(...
-%           message(...
-%                   'My:Error:ID',...
-%                   arg1,...
+%   warning(                                                            ...
+%           message(                                                    ...
+%                   'My:Error:ID',                                      ...
+%                   arg1,                                               ...
 %                   arg2));
+%   warning(                                                            ...
+%           message(                                                    ...
+%                   'My:Error:ID',                                      ...
+%                   arg1,                                               ...
+%                   arg2                                                ...
+%                   ));
 %
 %
 %It makes no assurances about finding any warnings or errors which do not
 %match the patterns above or logical extensions of the above patterns.  It
-%also does not look for more than one error or warning in a single line of
+%will, however, find more than one error or warning in a single line of
 %code, which could happen, but is poor style.
 %
 %After finding all instances of errors and warning in a file this function
-%adds three elements to a structure called 'Found'.  These elements are:
+%adds four elements to a structure called 'Found'.  These elements are:
 %
 %   a string, 'fName', which is the name of the file including the path,
 %
-%   a cell array, 'errors', which contain the errors found in the file, if
-%   there were no errors in the file, then an empty cell array is added
+%   a cell array, 'errors', which contain the modified and original errors
+%   found in the file, if there were no errors in the file, then an empty
+%   cell array is added
 %
-%   a cell array, 'warns', which contain the warnings found in the file, if
-%   there were no warnings in the file, then an empty cell array is added
+%   a cell array, 'warns', which contain the modified and original warnings
+%   found in the file, if there were no warnings in the file, then an empty
+%   cell array is added
+%
+%   a number, disp, which indicates if it needs to be displayed or not.  It
+%   is a count of all errors and warnings found in the file, so if it is
+%   equal to 0 then there is no need to display the empty output
 %
 
 %% Variable initialization
@@ -68,6 +86,7 @@ Found.disp   = 0;
 errStr  = '';
 warnStr = '';
 
+%flag to ensure that only the topmost call to this function outputs data
 output = false;
 
 %Check for inputs and go to the given directory, also set the path variable
@@ -83,6 +102,7 @@ switch length(varargin)
         warning('Wrong:num:inputs',                                     ...
                ['Can only accept 0, 1, or 2 inputs.  '                  ...
                 'Using current directory as the search path'])
+        fPath = '.';
 end
     
 %% Get a list of the files and folders in the current directory
@@ -90,34 +110,40 @@ end
 %Directory structure
 dList = dir(fPath);
 
-%Logical array for indexing
+%Logical array for indexing all directories
 subDirIdx = [dList.isdir];
-%Find MATLAB files in the current directory
-%Files in the current directory
+%Files in the current directory are anything NOT a directory
 files = dList(~subDirIdx);
 %Create a cell array to capture all the mfiles in the directory
 mFiles = {''};
 for i= 1:length(files)
     fileName = files(i).name;
+    %Find MATLAB files in the current directory
     if(strcmpi(fileName(end-1:end),'.m'))
         mFiles(end+1) = {fileName};
     end
 end
 
 %% Go through all the files and look for errors and warnings
+%ignore the first file which is always empty
 for i = 2:length(mFiles)
+    %add the path to the filename and set the line number to 0
     fInfo.name = [fPath filesep mFiles{i}];
     fInfo.lineNum = 0;
-    show = false;
+    show = false; %works with disp to ensure there is an accurate account
+                  %of which files need to be displayed
     %open the file
     f = fopen(fInfo.name);
-    %get a single line out of the file
+    %get a single line out of the file and itterate the line number
     str = fgetl(f);
     fInfo.lineNum = fInfo.lineNum + 1;
     %while we have not reached the end of the file
     while(~feof(f))
         %parse the line for the error or warning
-        [errStr{end+1} warnStr{end+1} f fInfo disp]=parseLine(str,f,fInfo,show);
+        [errStr{end+1} warnStr{end+1} f fInfo disp] =                   ...
+            parseLine(str, f, fInfo, show);
+        %get a new line, itterate line number and sum the new disp with the
+        %old show
         str  = fgetl(f);
         fInfo.lineNum = fInfo.lineNum + 1;
         show = show + disp;
@@ -138,17 +164,19 @@ end
 
 %find the subDirectories' names
 Dir         =  dList(subDirIdx);   %pull out only the directories
-subDirNames = {''};
+subDirNames = {''};                %initialize cell array
+%for all directories
 for i = 1:length(Dir)
+  %store name to temporary variable so we can index it
   dirName = Dir(i).name;
   if(dirName(1) ~= '@' && dirName(1) ~= '.')
-    subDirNames(end+1) = {Dir(i).name};  %put all the names into an array,
-                                       %excluding the current and previous
-                                       %directory symbols, . and .. as well
-                                       %as any linked folders with @
+    %put all the names into an array, this excludes the current and
+    %previous directory symbols, . and .. as well as any linked
+    %directories which begin with @ or hidden folders which begin with .
+    subDirNames(end+1) = {Dir(i).name};
   end
 end
-%make the call and combine the errors and warnings found
+%make the recursive call and combine the errors and warnings found
 for i = 2:length(subDirNames)
     recFind = errorWarningFinder(subDirNames{i}, fPath);
     %combine the recursive finds with the higher level finds
@@ -157,13 +185,12 @@ for i = 2:length(subDirNames)
     end
 end
 
-
 %% format output and show results
 if(output)
     %Number of files
     numFilesLookedAt = length(Found) - 1;
     %Create Report
-    display(repmat('-',1,76));
+    display(repmat('-',1,76)); %header solid line
     display('Begin Report');
     fprintf('Number of files searched through: %d\n', numFilesLookedAt);
     for i = 2:length(Found)
