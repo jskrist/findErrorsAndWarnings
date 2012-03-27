@@ -1,4 +1,4 @@
-function [Found] = errorWarningFinder(varargin)
+function [Found numErrors numWarnings] = errorWarningFinder(varargin)
 %This looks through the current folder and it's subfolders recursively,
 %reads any MATLAB file, i.e. files which have a '.m' extension, and finds
 %any error or warning statements which are UNCOMMENTED and fit the
@@ -89,6 +89,10 @@ warnStr = '';
 %flag to ensure that only the topmost call to this function outputs data
 output = false;
 
+%counters for errors and warnings
+numErrors = 0;
+numWarnings  = 0;
+
 %Check for inputs and go to the given directory, also set the path variable
 switch length(varargin)
     case 0
@@ -140,13 +144,19 @@ for i = 2:length(mFiles)
     %while we have not reached the end of the file
     while(~feof(f))
         %parse the line for the error or warning
-        [errStr{end+1} warnStr{end+1} f fInfo disp] =                   ...
+        [errStr{end+1} warnStr{end+1} f fInfo disp numErrs numWarns] =  ...
             parseLine(str, f, fInfo, show);
         %get a new line, itterate line number and sum the new disp with the
         %old show
         str  = fgetl(f);
         fInfo.lineNum = fInfo.lineNum + 1;
         show = show + disp;
+        %count errors and warnings to display them later
+if(numErrs > 0)
+    1+1;
+end
+        numErrors   = numErrors   + numErrs;
+        numWarnings = numWarnings + numWarns;
     end
     %close file
     fclose(f);
@@ -178,7 +188,9 @@ for i = 1:length(Dir)
 end
 %make the recursive call and combine the errors and warnings found
 for i = 2:length(subDirNames)
-    recFind = errorWarningFinder(subDirNames{i}, fPath);
+    [recFind numErrs numWarns] = errorWarningFinder(subDirNames{i}, fPath);
+    numErrors   = numErrors   + numErrs;
+    numWarnings = numWarnings + numWarns;
     %combine the recursive finds with the higher level finds
     for j = 2:length(recFind)
         Found(end+1) = recFind(j);
@@ -193,6 +205,8 @@ if(output)
     display(repmat('-',1,76)); %header solid line
     display('Begin Report');
     fprintf('Number of files searched through: %d\n', numFilesLookedAt);
+    fprintf('Number of Errors found: %d\n',   numErrors);
+    fprintf('Number of Warnings found: %d\n', numWarnings);
     for i = 2:length(Found)
         if(Found(i).disp ~= 0)
             fprintf('\nFile: %s\n', Found(i).fName);

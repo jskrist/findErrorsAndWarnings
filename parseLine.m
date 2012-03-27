@@ -1,4 +1,5 @@
-function [errFound warnFound fh fInfo disp] = parseLine(str,fh,fInfo,disp)
+function [errFound warnFound fh fInfo disp numErrs numWarns] =          ...
+            parseLine(str, fh, fInfo, disp)
 %PARSELINE takes in a line from a file, evaluates whether or not that line
 %contains an error or a warning, and returns cell arrays containing the
 %original and modified, errors and warnings found.
@@ -16,6 +17,8 @@ function [errFound warnFound fh fInfo disp] = parseLine(str,fh,fInfo,disp)
 %initialize output variables
 errFound  = '';
 warnFound = '';
+numErrs   = 0;
+numWarns  = 0;
 
 %assume we will not have to do a recursive call
 callAgain = false;
@@ -124,7 +127,10 @@ if(~isCommented && ~isempty(errWarnStart))
       str2 = regexprep(str2, '\s', '');
       %concatonate the two lines and recursively call this function
       str = [str, str2];
-      [errFound warnFound fh fInfo disp] = parseLine(str, fh, fInfo, disp);
+      [errFound warnFound fh fInfo disp numErrors numWarnings] =        ...
+          parseLine(str, fh, fInfo, disp);
+      numErrs  = numErrs  + numErrors;
+      numWarns = numWarns + numWarnings;
     else
         warning('FILE:EndedOnLineBreak', 'file ended with a linebreak');
     end
@@ -153,14 +159,16 @@ if(~isCommented && ~isempty(errWarnStart))
     %if no errors were found set output to empty cell array
     if(isempty(errFound))
       errFound  = {''; ''};
-    else %otherwise set display flag to true
-      disp = true;
+    else %otherwise set display flag to true and itterate numErrs
+      disp    = true;
+      numErrs = numErrs + length(errFound);
     end
     %if no warnings were found set output to empty cell array
     if(isempty(warnFound))
       warnFound = {''; ''};
-    else %otherwise set display flag to true
-      disp = true;
+    else %otherwise set display flag to true and itterate numWarns
+      disp     = true;
+      numWarns = numWarns + length(warnFound);
     end
   end
 else %line is commented or does  not contain an error or warning
