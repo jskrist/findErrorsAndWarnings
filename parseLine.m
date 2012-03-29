@@ -147,7 +147,7 @@ if(~isCommented && ~isempty(errWarnStart))
                          argRepStr);
       %separate the errors and warnings and store them
       if(mat{i}(1) == 'w')
-        warnFound{end+1} = {mat{i}; mod};
+        warnFound{end+1} = {mat{i}; mod}; %#ok<*AGROW>
       else
         errFound{end+1}  = {mat{i}; mod};
       end

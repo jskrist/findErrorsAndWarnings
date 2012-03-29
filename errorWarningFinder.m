@@ -86,9 +86,6 @@ Found.disp   = 0;
 errStr  = '';
 warnStr = '';
 
-%flag to ensure that only the topmost call to this function outputs data
-output = false;
-
 %counters for errors and warnings
 numErrors = 0;
 numWarnings  = 0;
@@ -97,11 +94,17 @@ numWarnings  = 0;
 switch length(varargin)
     case 0
         fPath = '.';
-        output = true;
+        recurrFlag = false;
     case 1
         fPath = ['.' filesep varargin{1}];
+        recurrFlag = false;
     case 2
-        fPath = [varargin{2} filesep varargin{1}];        
+        if(islogical(varargin{2}))
+            fPath      = varargin{1};
+            recurrFlag = varargin{2};
+        else
+            fPath = [varargin{1} filesep varargin{2}];
+        end
     otherwise
         warning('Wrong:num:inputs',                                     ...
                ['Can only accept 0, 1, or 2 inputs.  '                  ...
@@ -124,7 +127,7 @@ for i= 1:length(files)
     fileName = files(i).name;
     %Find MATLAB files in the current directory
     if(strcmpi(fileName(end-1:end),'.m'))
-        mFiles(end+1) = {fileName};
+        mFiles(end+1) = {fileName}; %#ok<*AGROW>
     end
 end
 
@@ -152,9 +155,6 @@ for i = 2:length(mFiles)
         fInfo.lineNum = fInfo.lineNum + 1;
         show = show + disp;
         %count errors and warnings to display them later
-if(numErrs > 0)
-    1+1;
-end
         numErrors   = numErrors   + numErrs;
         numWarnings = numWarnings + numWarns;
     end
@@ -188,7 +188,9 @@ for i = 1:length(Dir)
 end
 %make the recursive call and combine the errors and warnings found
 for i = 2:length(subDirNames)
-    [recFind numErrs numWarns] = errorWarningFinder(subDirNames{i}, fPath);
+    [recFind numErrs numWarns] = errorWarningFinder([fPath, filesep,    ...
+                                                     subDirNames{i}],   ...
+                                                     true);
     numErrors   = numErrors   + numErrs;
     numWarnings = numWarnings + numWarns;
     %combine the recursive finds with the higher level finds
@@ -198,7 +200,7 @@ for i = 2:length(subDirNames)
 end
 
 %% format output and show results
-if(output)
+if(~recurrFlag)
     %Number of files
     numFilesLookedAt = length(Found) - 1;
     %Create Report
@@ -207,31 +209,34 @@ if(output)
     fprintf('Number of files searched through: %d\n', numFilesLookedAt);
     fprintf('Number of Errors found: %d\n',   numErrors);
     fprintf('Number of Warnings found: %d\n', numWarnings);
-    for i = 2:length(Found)
-        if(Found(i).disp ~= 0)
-            fprintf('\nFile: %s\n', Found(i).fName);
-            fprintf('\nErrors:\n');
-            for j = 1:length(Found(i).errors)
-                for k = 1:length(Found(i).errors{j})
-                  if(~isempty(Found(i).errors{j}{k}))
-                      display(repmat(' -',1,38));
-                      fprintf('Original: %s\n', Found(i).errors{j}{k}{1});
-                      fprintf('Modified: %s\n', Found(i).errors{j}{k}{2});
-                      display(repmat(' -',1,38));
-                  end
-                end
-            end
-            fprintf('\nWarnings:\n');
-            for j = 1:length(Found(i).warns)
-                for k = 1:length(Found(i).warns{j})
-                  if(~isempty(Found(i).warns{j}{k}))
-                      display(repmat('- --',1,19));
-                      fprintf('Original: %s\n', Found(i).warns{j}{k}{1});
-                      fprintf('Modified: %s\n', Found(i).warns{j}{k}{2});
-                      display(repmat('- --',1,19));
-                  end
-                end
-            end
-        end
-    end
+%% Uncomment this section to report the original and modified errors and
+%warnings found
+%
+%     for i = 2:length(Found)
+%         if(Found(i).disp ~= 0)
+%             fprintf('\nFile: %s\n', Found(i).fName);
+%             fprintf('\nErrors:\n');
+%             for j = 1:length(Found(i).errors)
+%                 for k = 1:length(Found(i).errors{j})
+%                   if(~isempty(Found(i).errors{j}{k}))
+%                       display(repmat(' -',1,38));
+%                       fprintf('Original: %s\n', Found(i).errors{j}{k}{1});
+%                       fprintf('Modified: %s\n', Found(i).errors{j}{k}{2});
+%                       display(repmat(' -',1,38));
+%                   end
+%                 end
+%             end
+%             fprintf('\nWarnings:\n');
+%             for j = 1:length(Found(i).warns)
+%                 for k = 1:length(Found(i).warns{j})
+%                   if(~isempty(Found(i).warns{j}{k}))
+%                       display(repmat('- --',1,19));
+%                       fprintf('Original: %s\n', Found(i).warns{j}{k}{1});
+%                       fprintf('Modified: %s\n', Found(i).warns{j}{k}{2});
+%                       display(repmat('- --',1,19));
+%                   end
+%                 end
+%             end
+%         end
+%     end
 end
