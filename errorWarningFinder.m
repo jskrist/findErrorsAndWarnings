@@ -1,4 +1,27 @@
-function [Found numErrors numWarnings] = errorWarningFinder(varargin)
+function [Found, numErrors, numWarnings] = errorWarningFinder(varargin)
+%ERRORWARNINGFINDER
+%
+% USES:
+%
+%[Found, numErrors, numWarnings] = ERRORWARNINGFINDER()
+%
+%[Found, numErrors, numWarnings] = ERRORWARNINGFINDER(folderName)
+%
+%[Found, numErrors, numWarnings] = ERRORWARNINGFINDER(folderPath,recurFlag)
+%
+%
+%ERRORWARNINGFINDER() checks the current directory and its subdirectories
+%for any malformed error or warning messages.
+%
+%ERRORWARNINGFINDER(folderName) recursively checks a directory with the
+%name folderName located in the current directory for any malformed errors
+%or warnings.
+%
+%ERRORWARNINGFINDER(folderPath, recurFlag) recursively checks a directory
+%located at folderPath for any malformed errors or warnings.  If recurFlag
+%is set to false the report is output, if it is set to true the report is
+%not generated.
+%
 %This looks through the current folder and it's subfolders recursively,
 %reads any MATLAB file, i.e. files which have a '.m' extension, and finds
 %any error or warning statements which are UNCOMMENTED and fit the
