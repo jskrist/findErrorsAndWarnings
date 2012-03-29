@@ -35,7 +35,7 @@ commentChar     = '%';
 argRepStr            = '0';
 
 %first remove any spaces from the line
-str = regexprep(str, '\s', '');
+str = regexprep(str, '\s*?', '');
 
 %then check the line for a comment, an error, or a warning
 commentLocation = regexp(str,commentChar);
