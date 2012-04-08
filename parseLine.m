@@ -1,5 +1,4 @@
-function [errFound warnFound fh fInfo disp numErrs numWarns] =          ...
-            parseLine(str, fh, fInfo, disp)
+function [msgs, fh, fInfo, cnts] =  parseLine(str, fh, fInfo)
 %PARSELINE takes in a line from a file, evaluates whether or not that line
 %contains an error or a warning, and returns cell arrays containing the
 %original and modified, errors and warnings found.
@@ -15,10 +14,8 @@ function [errFound warnFound fh fInfo disp numErrs numWarns] =          ...
 %it and I wanted the output to look uniform.
 
 %initialize output variables
-errFound  = '';
-warnFound = '';
-numErrs   = 0;
-numWarns  = 0;
+msgs = '';
+cnts = 0;
 
 %assume we will not have to do a recursive call
 callAgain = false;
@@ -26,13 +23,15 @@ callAgain = false;
 %regular expressions to use which make the code easier to modify
 startStr        = '(error|warning)\(';
 msgStr          = 'message\(';
-IdStr           = '''(\w*(:\w*){1,})'',?';
-argStr          = '(((\w*(\(.*\))?)|\d*?),?){0,}';
-badArgsStr      = '(?<='',.*(\(|\[)).*?[^\)],[^\(].*(?=(\)|\]).*?\){2}$)';
+IdStr           = '''(\w*(:\w*){0,})'',?';
+argumentStr     = '(((\w*(\(.*\))?)|\d*?),?){0,}';
+inStr           = '[\w\d,-''/\.]*?';
+containerStr    = ['(?<='',',inStr,')(\[',inStr,'\]|\(',inStr,'\))'];
+argStr          = '(?<='',((.*,)?)*).*?(?=[,\)$])';
 lineBreakChkStr = '\.\.\.';
-commentChar     = '%';
+commentChar     = '[%'']';
 %value which will replace any arguments found
-argRepStr            = '0';
+argRepStr       = '0';
 
 %first remove any spaces from the line
 str = regexprep(str, '\s*?', '');
@@ -45,7 +44,7 @@ errWarnStart    = regexp(str, startStr);
 %the warning or error
 if(~isempty(commentLocation))
   if(~isempty(errWarnStart))
-    isCommented = max(commentLocation < errWarnStart);
+    isCommented = max(commentLocation(1) < errWarnStart);
   else
     isCommented = true;
   end
@@ -78,14 +77,15 @@ if(~isCommented && ~isempty(errWarnStart))
                          %function and the message ID, but does not end
                          %there, so check for arguments
           mat = regexp(str,                                             ...
-                       [startStr, msgStr, IdStr, argStr, '[^\){2}]'],   ...
+                       [startStr, msgStr, IdStr,                        ...
+                       argumentStr, '[^\){2}]'],                        ...
                        'match');
           if(isempty(mat)) %the line contains the error or warning, a
                            %message function and the message ID, and
                            %may contain one or more arguments so check if
                            %it ends here (i.e. check for the whole thing)
             mat = regexp(str,                                           ...
-                         [startStr, msgStr, IdStr,argStr, '\){2}'],     ...
+                         [startStr, msgStr, IdStr,argumentStr, '\){2}'],...
                          'match');
             if(isempty(mat)) %it was not found, but we know it exists, so
                              %it was not split logically
@@ -127,12 +127,10 @@ if(~isCommented && ~isempty(errWarnStart))
       str2 = regexprep(str2, '\s', '');
       %concatonate the two lines and recursively call this function
       str = [str, str2];
-      [errFound warnFound fh fInfo disp numErrors numWarnings] =        ...
-          parseLine(str, fh, fInfo, disp);
-      numErrs  = numErrs  + numErrors;
-      numWarns = numWarns + numWarnings;
+      [msgs fh fInfo counters] = parseLine(str, fh, fInfo);
+      cnts = cnts + counters;
     else
-        warning('FILE:EndedOnLineBreak', 'file ended with a linebreak');
+      warning('FILE:EndedOnLineBreak', 'file ended with a linebreak');
     end
   else
     %combine all errors and warnings found then evaluate them in the
@@ -140,39 +138,26 @@ if(~isCommented && ~isempty(errWarnStart))
     %output later
     for i = 1:length(mat)
       %remove any [] or () or [,] or (,) within the arguments
-      modTmp = regexprep(mat{i},badArgsStr, '0');
-      %replace all arguments with argRepStr
-      mod    = regexprep(modTmp,                                        ...
-                         '(?<='',((.*,)?)*).*?(?=(,|\){2}$))',          ...
-                         argRepStr);
-      %separate the errors and warnings and store them
-      if(mat{i}(1) == 'w')
-        warnFound{end+1} = {mat{i}; mod}; %#ok<*AGROW>
-      else
-        errFound{end+1}  = {mat{i}; mod};
+      modTmp1 = regexprep(mat{i} ,containerStr, '0');
+      modTmp2 = regexprep(modTmp1,containerStr, '0');
+      while(~strcmp(modTmp1, modTmp2))
+        modTmp1 = regexprep(modTmp2,containerStr, '0');
+        modTmp2 = regexprep(modTmp1,containerStr, '0');
       end
+      %replace all arguments with argRepStr
+      mod = regexprep(modTmp2, argStr, argRepStr);
       %evaluate and check the modified errors and warnings
-      evalChk(mod, fInfo);
+      [badLine, msgStr] = evalCheck(mod, fInfo);
+      if(badLine)
+          msgs{end+1} = msgStr;%#ok<*AGROW>
+      end
     end
-    %don't display results by default
-    disp = false;
-    %if no errors were found set output to empty cell array
-    if(isempty(errFound))
-      errFound  = {''; ''};
-    else %otherwise set display flag to true and itterate numErrs
-      disp    = true;
-      numErrs = numErrs + length(errFound);
-    end
-    %if no warnings were found set output to empty cell array
-    if(isempty(warnFound))
-      warnFound = {''; ''};
-    else %otherwise set display flag to true and itterate numWarns
-      disp     = true;
-      numWarns = numWarns + length(warnFound);
+    if(isempty(msgs))
+      msgs = {''};
+    else
+      cnts = cnts + length(msgs);
     end
   end
 else %line is commented or does  not contain an error or warning
-  disp = false;
-  errFound  = {''; ''};
-  warnFound = {''; ''};
+  msgs = {''};
 end

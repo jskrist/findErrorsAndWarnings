@@ -1,117 +1,83 @@
-function [Found, numErrors, numWarnings] = errorWarningFinder(varargin)
-%ERRORWARNINGFINDER
+function [Found numRptMsgs] = errorWarningFinder(varargin)
+% ERRORWARNINGFINDER finds malformed errors in MATLAB files
 %
-% USES:
+% Syntax:
+%   Found = ERRORWARNINGFINDER()
+%   Found = ERRORWARNINGFINDER(folderPath)
+%   Found = ERRORWARNINGFINDER(folderPath,dispReport)
+%   Found = ERRORWARNINGFINDER(folderPath,files)
 %
-%[Found, numErrors, numWarnings] = ERRORWARNINGFINDER()
+% Description:
+%   ERRORWARNINGFINDER() checks the current directory and its
+%       subdirectories for any malformed error or warning messages.
 %
-%[Found, numErrors, numWarnings] = ERRORWARNINGFINDER(folderName)
+%   ERRORWARNINGFINDER(folderPath) recursively checks a directory at the
+%       path 'folderPath' for any malformed errors or warnings.
 %
-%[Found, numErrors, numWarnings] = ERRORWARNINGFINDER(folderPath,recurFlag)
+%   ERRORWARNINGFINDER(folderPath, dispReport) recursively checks a
+%       directory located at 'folderPath' for any malformed errors or
+%       warnings.  'dispReport' is a boolean which determines whether or
+%       not a report is generated.
 %
-%
-%ERRORWARNINGFINDER() checks the current directory and its subdirectories
-%for any malformed error or warning messages.
-%
-%ERRORWARNINGFINDER(folderName) recursively checks a directory with the
-%name folderName located in the current directory for any malformed errors
-%or warnings.
-%
-%ERRORWARNINGFINDER(folderPath, recurFlag) recursively checks a directory
-%located at folderPath for any malformed errors or warnings.  If recurFlag
-%is set to false the report is output, if it is set to true the report is
-%not generated.
-%
-%This looks through the current folder and it's subfolders recursively,
-%reads any MATLAB file, i.e. files which have a '.m' extension, and finds
-%any error or warning statements which are UNCOMMENTED and fit the
-%following patterns:
-%
-%     error(message('My:Error:ID'));
-%     error(message('My:Error:ID', arg1, arg2));
-%     error(                                                            ...
-%           message('My:Error:ID', arg1, arg2));
-%     error(                                                            ...
-%           message(                                                    ...
-%                   'My:Error:ID', arg1, arg2));
-%     error(                                                            ...
-%           message(                                                    ...
-%                   'My:Error:ID',                                      ...
-%                   arg1, arg2));
-%     error(                                                            ...
-%           message(                                                    ...
-%                   'My:Error:ID',                                      ...
-%                   arg1,                                               ...
-%                   arg2));
-%     error(                                                            ...
-%           message(                                                    ...
-%                   'My:Error:ID',                                      ...
-%                   arg1,                                               ...
-%                   arg2                                                ...
-%                   ));
-%
-%   warning(message('My:Error:ID'));
-%   warning(message('My:Error:ID', arg1, arg2));
-%   warning(                                                            ...
-%           message('My:Error:ID', arg1, arg2));
-%   warning(                                                            ...
-%           message(                                                    ...
-%                   'My:Error:ID', arg1, arg2));
-%   warning(                                                            ...
-%           message(                                                    ...
-%                   'My:Error:ID',                                      ...
-%                   arg1, arg2));
-%   warning(                                                            ...
-%           message(                                                    ...
-%                   'My:Error:ID',                                      ...
-%                   arg1,                                               ...
-%                   arg2));
-%   warning(                                                            ...
-%           message(                                                    ...
-%                   'My:Error:ID',                                      ...
-%                   arg1,                                               ...
-%                   arg2                                                ...
-%                   ));
+%   ERRORWARNINGFINDER(folderPath, files) checks the files in 'files', a
+%       cell array of file names, in the given folder path, 'folderPath',
+%       for any malformed errors or warnings.
 %
 %
-%It makes no assurances about finding any warnings or errors which do not
-%match the patterns above or logical extensions of the above patterns.  It
-%will, however, find more than one error or warning in a single line of
-%code, which could happen, but is poor style.
+%    Note: This function reads any MATLAB file, i.e. files which have a
+%          '.m' extension, and finds any error or warning statements which
+%          are UNCOMMENTED.
 %
-%After finding all instances of errors and warning in a file this function
-%adds four elements to a structure called 'Found'.  These elements are:
+% Warning:
+%    This code relies on a certain pattern to the error and warning
+%    statements in the files it checks.  If the pattern is not met this
+%    code will output a warning that the 'Warning/Error was not logically
+%    split'.
 %
-%   a string, 'fName', which is the name of the file including the path,
+%    The pattern to match is error(message('MESSAGE:ID', arg1, arg2, ...))
+%    or warning(message('MESSAGE:ID', arg1, arg2, ...)).  Where there can
+%    be zero or more arguments, and the statement can be split on multiple
+%    lines, as long as the last '))' stays together.
 %
-%   a cell array, 'errors', which contain the modified and original errors
-%   found in the file, if there were no errors in the file, then an empty
-%   cell array is added
+%    It makes no assurances about finding any warnings or errors which do
+%    not match the patterns above.  It will, however, find more than one
+%    error or warning in a single line of code.
 %
-%   a cell array, 'warns', which contain the modified and original warnings
-%   found in the file, if there were no warnings in the file, then an empty
-%   cell array is added
+% Output:
+%    If 'dispReport' is set to true, then a report is output, which states
+%    how many files were looked through, and how many issues were found.
 %
-%   a number, disp, which indicates if it needs to be displayed or not.  It
-%   is a count of all errors and warnings found in the file, so if it is
-%   equal to 0 then there is no need to display the empty output
+%    If any issues were found they are also listed.
+%
+%    After finding all instances of errors and warning in a file this
+%    function adds two elements to a structure called 'Found'.  These
+%    elements are:
+%
+%    a string, 'fName', which is the name of the file including the path,
+%
+%    a cell array, 'rptMsg', which contains messages about issues found
+%    with errors or warnings found in the files.  if there were no errors
+%    or warnings in the files then an empty cell array is added.
+%
+% See also:
+%    ERROR, MESSAGE
+%
+% Copyright by James Kristoff 2012
 %
 
 %% Variable initialization
 
 %Structure to track and output what we found
 Found.fName  =  '';
-Found.errors = {''};
-Found.warns  = {''};
-Found.disp   = 0;
+Found.rptMsg = {''};
 
-%Used to gather errors and warnings line by line for each file
-errStr  = '';
-warnStr = '';
+%Number of report messages
+numRptMsgs = 0;
 
-%counters for errors and warnings
-numErrors = 0;
-numWarnings  = 0;
+%Used to gather issues line by line for each file
+msgs = '';
+
+singleFileFlag = false;
 
 %Check for inputs and go to the given directory, also set the path variable
 switch length(varargin)
@@ -119,14 +85,22 @@ switch length(varargin)
         fPath = '.';
         recurrFlag = false;
     case 1
-        fPath = ['.' filesep varargin{1}];
+        fPath = varargin{1};
+        if(strcmp(fPath(end), '\'))
+            fPath(end) = '';
+        end
         recurrFlag = false;
     case 2
+        fPath = varargin{1};
+        if(strcmp(fPath(end), '\'))
+            fPath(end) = '';
+        end
         if(islogical(varargin{2}))
-            fPath      = varargin{1};
-            recurrFlag = varargin{2};
+            recurrFlag = ~varargin{2};
         else
-            fPath = [varargin{1} filesep varargin{2}];
+            files          = varargin{2};
+            singleFileFlag = true;
+            recurrFlag     = false;
         end
     otherwise
         warning('Wrong:num:inputs',                                     ...
@@ -136,21 +110,32 @@ switch length(varargin)
 end
     
 %% Get a list of the files and folders in the current directory
+if(~singleFileFlag)
+    %Directory structure
+    dList = dir(fPath);
 
-%Directory structure
-dList = dir(fPath);
-
-%Logical array for indexing all directories
-subDirIdx = [dList.isdir];
-%Files in the current directory are anything NOT a directory
-files = dList(~subDirIdx);
-%Create a cell array to capture all the mfiles in the directory
-mFiles = {''};
-for i= 1:length(files)
-    fileName = files(i).name;
-    %Find MATLAB files in the current directory
-    if(strcmpi(fileName(end-1:end),'.m'))
-        mFiles(end+1) = {fileName}; %#ok<*AGROW>
+    %Logical array for indexing all directories
+    subDirIdx = [dList.isdir];
+    %Files in the current directory are anything NOT a directory
+    files = dList(~subDirIdx);
+    %Create a cell array to capture all the mfiles in the directory
+    mFiles = {''};
+    for i= 1:length(files)
+        fileName = files(i).name;
+        %Find MATLAB files in the current directory
+        if(strcmpi(fileName(end-1:end),'.m'))
+            mFiles(end+1) = {fileName}; %#ok<*AGROW>
+        end
+    end
+else
+    %Create a cell array to capture all the mfiles in the directory
+    mFiles = {''};
+    for i= 1:size(files, 1)
+        fileName = files(i,:);
+        %Find MATLAB files in the current directory
+        if(strcmpi(fileName{1}(end-1:end),'.m'))
+            mFiles(end+1) = fileName; %#ok<*AGROW>
+        end
     end
 end
 
@@ -160,106 +145,86 @@ for i = 2:length(mFiles)
     %add the path to the filename and set the line number to 0
     fInfo.name = [fPath filesep mFiles{i}];
     fInfo.lineNum = 0;
-    show = false; %works with disp to ensure there is an accurate account
-                  %of which files need to be displayed
+
     %open the file
     f = fopen(fInfo.name);
+    if(f == -1)
+        error('failed to open file %s', fInfo.name);
+    end
     %get a single line out of the file and itterate the line number
     str = fgetl(f);
     fInfo.lineNum = fInfo.lineNum + 1;
     %while we have not reached the end of the file
-    while(~feof(f))
-        %parse the line for the error or warning
-        [errStr{end+1} warnStr{end+1} f fInfo disp numErrs numWarns] =  ...
-            parseLine(str, f, fInfo, show);
-        %get a new line, itterate line number and sum the new disp with the
-        %old show
-        str  = fgetl(f);
+    while(ischar(str))
+        %parse the line for issues
+        [messages,f,fInfo,cnts] =  parseLine(str, f, fInfo);
+        for j = 1:cnts
+            msgs{end+1} = messages{j};
+        end
+        %get a new line, itterate line number
+        str = fgetl(f);
         fInfo.lineNum = fInfo.lineNum + 1;
-        show = show + disp;
-        %count errors and warnings to display them later
-        numErrors   = numErrors   + numErrs;
-        numWarnings = numWarnings + numWarns;
+        %count number of messages to display later
+        numRptMsgs = numRptMsgs + cnts;
     end
     %close file
     fclose(f);
     %Save the information about the last file
     Found(end+1).fName = [fPath filesep mFiles{i}];
-    Found(end).errors  = errStr;
-    Found(end).warns   = warnStr;
-    Found(end).disp    = show;
+    Found(end).rptMsg  = msgs;
     %reinitialize temporary variables
-    errStr  = '';
-    warnStr = '';
+    msgs = '';
 end
 
 %% recursive call for all subdirectories
-
-%find the subDirectories' names
-Dir         =  dList(subDirIdx);   %pull out only the directories
-subDirNames = {''};                %initialize cell array
-%for all directories
-for i = 1:length(Dir)
-  %store name to temporary variable so we can index it
-  dirName = Dir(i).name;
-  if(dirName(1) ~= '@' && dirName(1) ~= '.')
-    %put all the names into an array, this excludes the current and
-    %previous directory symbols, . and .. as well as any linked
-    %directories which begin with @ or hidden folders which begin with .
-    subDirNames(end+1) = {Dir(i).name};
-  end
-end
-%make the recursive call and combine the errors and warnings found
-for i = 2:length(subDirNames)
-    [recFind numErrs numWarns] = errorWarningFinder([fPath, filesep,    ...
-                                                     subDirNames{i}],   ...
-                                                     true);
-    numErrors   = numErrors   + numErrs;
-    numWarnings = numWarnings + numWarns;
-    %combine the recursive finds with the higher level finds
-    for j = 2:length(recFind)
-        Found(end+1) = recFind(j);
+if(~singleFileFlag)
+    %find the subDirectories' names
+    Dir         =  dList(subDirIdx);   %pull out only the directories
+    subDirNames = {''};                %initialize cell array
+    %for all directories
+    for i = 1:length(Dir)
+      %store name to temporary variable so we can index it
+      dirName = Dir(i).name;
+      if(dirName(1) ~= '@' && dirName(1) ~= '.')
+        %put all the names into an array, this excludes the current and
+        %previous directory symbols, . and .. as well as any linked
+        %directories begining with @ or hidden folders which begin with .
+        subDirNames(end+1) = {Dir(i).name};
+      end
+    end
+    %make the recursive call and combine the errors and warnings found
+    for i = 2:length(subDirNames)
+        [recFind cnts] = errorWarningFinder([fPath, filesep,            ...
+                                            subDirNames{i}],            ...
+                                            false);
+        numRptMsgs  = numRptMsgs + cnts;
+        %combine the recursive finds with the higher level finds
+        for j = 2:length(recFind)
+            Found(end+1) = recFind(j);
+        end
     end
 end
-
 %% format output and show results
 if(~recurrFlag)
-    %Number of files
-    numFilesLookedAt = length(Found) - 1;
     %Create Report
     display(repmat('-',1,76)); %header solid line
     display('Begin Report');
-    fprintf('Number of files searched through: %d\n', numFilesLookedAt);
-    fprintf('Number of Errors found: %d\n',   numErrors);
-    fprintf('Number of Warnings found: %d\n', numWarnings);
-%% Uncomment this section to report the original and modified errors and
-%warnings found
-%
-%     for i = 2:length(Found)
-%         if(Found(i).disp ~= 0)
-%             fprintf('\nFile: %s\n', Found(i).fName);
-%             fprintf('\nErrors:\n');
-%             for j = 1:length(Found(i).errors)
-%                 for k = 1:length(Found(i).errors{j})
-%                   if(~isempty(Found(i).errors{j}{k}))
-%                       display(repmat(' -',1,38));
-%                       fprintf('Original: %s\n', Found(i).errors{j}{k}{1});
-%                       fprintf('Modified: %s\n', Found(i).errors{j}{k}{2});
-%                       display(repmat(' -',1,38));
-%                   end
-%                 end
-%             end
-%             fprintf('\nWarnings:\n');
-%             for j = 1:length(Found(i).warns)
-%                 for k = 1:length(Found(i).warns{j})
-%                   if(~isempty(Found(i).warns{j}{k}))
-%                       display(repmat('- --',1,19));
-%                       fprintf('Original: %s\n', Found(i).warns{j}{k}{1});
-%                       fprintf('Modified: %s\n', Found(i).warns{j}{k}{2});
-%                       display(repmat('- --',1,19));
-%                   end
-%                 end
-%             end
-%         end
-%     end
+    fprintf('Number of files searched through: %d\n', length(Found) - 1);
+    fprintf('Number of Issues found: %d\n', numRptMsgs);
+    % Output the issues found
+    if(numRptMsgs > 0)
+        fprintf('\nIssues:\n');
+        for i = 2:length(Found)
+            if(~isempty(Found(i).rptMsg))
+                fprintf('\nFile: %s\n', Found(i).fName);
+                display(repmat('*',1,76));
+                for j = 1:length(Found(i).rptMsg)
+                    if(~isempty(Found(i).rptMsg{j}))
+                        fprintf('%s\n', Found(i).rptMsg{j});
+                        display(repmat(' -',1,38));
+                    end
+                end
+            end
+        end
+    end
 end
